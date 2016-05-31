@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<!-- saved from url=(0043)http://www.zi-han.net/theme/se7en/chat.html -->
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <title>
+      PyChat
+    </title>
+ 
+    <link href="./css/bootstrap.min.css" media="all" rel="stylesheet" type="text/css">
+    <link href="./css/style.css" media="all" rel="stylesheet" type="text/css">
+    <script type="text/javascript" src='./js/jquery-1.10.2.min.js'></script>    
+    <script type="text/javascript" src='./js/bootstrap.min.js'></script>
+
+    <script type="text/javascript">
+    function htmlEncode(value){
+      return $('<div/>').text(value).html();
+    }
+
+    function speekTo(id){
+       $('#msg').val('@'+id+' ')
+    }
+
+    function addBubble(username, id, msg, time, isCurrent){
+      username = htmlEncode(username)
+      msg = htmlEncode(msg)
+      time = htmlEncode(time)
+
+      bubble = '<li '
+      if (isCurrent){
+        bubble += 'class="current-user"'
+      }
+      bubble +='><img width="40" height="40" src="./images/avatar.jpg"><div class="bubble"><a class="user-name"'
+      bubble +=' onclick=speekTo('+id+') '
+      bubble +='>'
+      bubble += username
+      bubble += '</a><p class="message">' 
+      bubble += msg 
+      bubble += '</p><p class="time">'+ time +'</p></div></li>'
+      $('ul').append(bubble)
+    }
+
+    function sendMsg(){
+      msg = $('#msg').val()
+      if (!msg) return;
+      console.log(msg)
+      $('#msg').val('')
+
+      postArgs = {}
+      postArgs.msg = msg
+
+      // in pychat @someone
+      match = msg.match(/^@(\d+)/)
+      if (match){
+        postArgs.to = match[1]
+      }
+      
+
+      $.post('/send',
+        postArgs,
+        function(data){
+          console.log(data)
+          if (data.success){
+            addBubble(data.name,data.id, data.msg, data.time, true)
+          }
+        },
+        'json'
+        )      
+    }
+
+    function handlePacket(packet){
+      if (packet.type == 1){
+            msg = packet.name + '(' + packet.id + ')'
+            msg += '进入聊天室'
+            addBubble('PyChat机器人','', msg, packet.time)
+          }else if (packet.type==2){
+            user = packet.name + '(' + packet.id + ')'
+            addBubble(user,packet.id, packet.msg, packet.time)
+          }else if (packet.type==3){
+            msg = packet.name + '(' + packet.id + ')'
+            msg += '离开聊天室'
+            addBubble('PyChat机器人','', msg, packet.time)
+          }
+    }
+
+    function peekMsg(){
+      $.post('/peek','',
+        function(data){
+          if (data.n > 0){
+            console.log('Peek data:')
+            console.log(data)
+          }
+
+          for (i=0;i<data.n;i++){
+            handlePacket(data.l[i])
+          }
+        }
+        ,'json'
+        )
+
+      //clearInterval(peekTimer)
+    }
+
+    $(document).ready(function(){
+      $("#send").click(function(){
+        sendMsg()
+      });
+        //回车上屏
+       $("body").keydown(function() {
+             if (event.keyCode == "13") {
+                 $('#send').click();
+             }
+         });
+
+      peekTimer = setInterval(peekMsg, 500)
+
+
+    });
+
+    </script>
+  </head>
+  <body>
+    <div class="modal-shiftfix">
+     
+      <div class="container-fluid main-content">
+       <!-- <div class="page-title">
+          <h1>
+                聊天窗口
+          </h1>
+        </div> -->
+        <div class="row">
+          <!-- Conversation -->
+          <div class="col-lg-12">
+            <div class="widget-container scrollable chat chat-page">
+
+              <div class="heading">
+                PyChat聊天室                
+              </div>
+              <div class="widget-content padded">
+                <ul>
+                  <li>
+                    <img width="40" height="40" src="./images/avatar.jpg">
+                    <div class="bubble">
+                      <a class="user-name">PyChat机器人</a>
+                      <p class="message">
+                          欢迎来到PyChat聊天室
+                      </p>
+                    </div>
+                  </li>
+                  </ul>
+                 
+              </div>
+              <div class="post-message">
+                <input id="msg" class="form-control" placeholder="输入需要发送的信息…" type="text">
+                <input id="send" type="submit" value="发送">
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+   
+  
+</body></html>
